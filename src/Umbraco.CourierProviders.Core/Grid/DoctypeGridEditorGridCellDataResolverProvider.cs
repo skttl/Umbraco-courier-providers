@@ -11,6 +11,10 @@
     using global::Umbraco.Courier.Core.ProviderModel;
     using global::Umbraco.Courier.DataResolvers.PropertyDataResolvers;
     using global::Umbraco.Courier.ItemProviders;
+    using global::Umbraco.Core;
+    using global::Umbraco.Core.Logging;
+    using global::Umbraco.Core.Models;
+    using global::Umbraco.Core.Services;
 
     using Newtonsoft.Json;
     using Newtonsoft.Json.Linq;
@@ -27,7 +31,7 @@
         {
             try
             {
-                return cell?.editor?.alias?.ToString() == "docType";
+                return cell.value.dtgeContentTypeAlias.ToString() != string.Empty;
             }
             catch
             {
@@ -49,9 +53,13 @@
 
         private void ProcessCell(Item item, ContentProperty propertyData, dynamic cell, Direction direction)
         {
-            string docTypeId = cell?.value?.docType?.ToString();
-            string cellValue = cell?.value?.value?.ToString();
-            if (cellValue == null || docTypeId == null)
+            var contentTypeService = ApplicationContext.Current.Services.ContentTypeService;
+            string docTypeAlias = cell.value.dtgeContentTypeAlias.ToString();
+            var contentType = contentTypeService.GetContentType(docTypeAlias);
+            var docTypeId = (contentType != null ? contentType.Key.ToString() : null);
+
+            string cellValue = cell.value.value.ToString();
+            if (cellValue == null || docTypeAlias == null)
                 return;
 
             var data = JsonConvert.DeserializeObject(cellValue);
@@ -66,6 +74,8 @@
             {
                 item.Dependencies.Add(docTypeId, ItemProviderIds.documentTypeItemProviderGuid);
 
+            }
+            /*
                 //package doctype from guid to alias
                 cell.value.docType = new JValue(docType.Alias);
             }
@@ -73,7 +83,7 @@
             {
                 //extract doctype from alias to guid
                 cell.value.docType = new JValue(docType.UniqueId.ToString());
-            }
+            }*/
 
             var propertyItemProvider = ItemProviderCollection.Instance.GetProvider(ItemProviderIds.propertyDataItemProviderGuid, ExecutionContext);
 
